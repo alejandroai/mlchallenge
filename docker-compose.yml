@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  db:
+    image: db:latest
+    container_name: db
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      UCONFIG_PASSWORD: ${UCONFIG_PASSWORD}
+      UANALYSIS_PASSWORD: ${UANALYSIS_PASSWORD}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal-network
+
+  config-service:
+    image: config-service:latest
+    build:
+      context: ./config-service
+      dockerfile: Dockerfile
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: config_db
+      DB_USER: uconfig
+      DB_PASSWORD: ${UCONFIG_PASSWORD}
+    ports:
+      - "5000:5000"
+    networks:
+      - internal-network
+    depends_on:
+      - db
+
+  analysis-service:
+    image: analysis-service:latest
+    build:
+      context: ./analysis-service
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: analysis_db
+      DB_USER: uanalysis
+      DB_PASSWORD: ${UANALYSIS_PASSWORD}
+      CONFIG_SERVICE_URL: http://config-service:5000
+      AUTH_TOKEN: supersecret
+      CONFIG_USER: uanalysis
+      CONFIG_PASSWORD: mlchallenge2025
+    networks:
+      - internal-network
+    depends_on:
+      - config-service
+
+networks:
+  internal-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
