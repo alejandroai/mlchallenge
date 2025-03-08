@@ -22,7 +22,6 @@ JWT_SECRET = os.getenv("JWT_SECRET", "super-secret")
 JWT_EXPIRATION = int(os.getenv("JWT_EXPIRATION", 30))
 REFRESH_EXPIRATION = int(os.getenv("JWT_EXPIRATION", 1))
 #Para el sanitizado de datos.
-#Todo: colocarlos en la DB
 MIN_PASSWORD = int(os.getenv("MIN_PASSWORD", 8))
 MAX_PASSWORD = int(os.getenv("MAX_PASSWORD", 50))
 MIN_USERNAME = int(os.getenv("MIN_USERNAME", 3))
@@ -144,21 +143,6 @@ def sanitize_password(password):
     
     return password
 
-###### Endpoints y logica del servicio http
-
-# security headers cuando implemente https
-# @app.after_request
-# def add_security_headers(response):
-#     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
-#     response.headers['Content-Security-Policy'] = "default-src 'self'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;"
-#     response.headers['X-Content-Type-Options'] = 'nosniff'
-#     response.headers['X-Frame-Options'] = 'DENY'
-#     response.headers['X-XSS-Protection'] = '1; mode=block'
-#     response.headers['Referrer-Policy'] = 'no-referrer-when-downgrade'
-#     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-#     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-#     return response
-
 # Manejar errores de token expirado
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
@@ -245,7 +229,7 @@ def get_config():
         return jsonify({"error": "Configuration file not found"}), 500
 
     logger.info(f"GET config from {request.remote_addr} for device {device_id} got 200")
-    return jsonify({"device_id": device_id,"device_name":device_data[1],"device_type":device_data[1], "config": config})
+    return jsonify({"device_id": device_id,"device_name":device_data[0],"device_type":device_data[1], "config": config})
 
 ###### Main}
 if __name__ == '__main__':

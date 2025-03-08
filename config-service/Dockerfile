@@ -21,6 +21,7 @@ EXPOSE 5000
 
 # Copiar los archivos de configuración
 COPY --chown=uconfigservice:uconfigservice data /app/data
+COPY --chown=uconfigservice:uconfigservice log /app/log
 
 # Cambiar al usuario sin privilegios
 USER uconfigservice
