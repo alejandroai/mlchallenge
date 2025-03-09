@@ -273,10 +273,7 @@ def get_analize():
             # return aswer
             return jsonify({"device_id": device_id,"device_name":config_respone["device_name"],"device_type":config_respone["device_type"], "analysis_id":analysis_id,"analysis_result":analysis_report})
 
-for f in result:
-    print(f.to_string())
-exit()
-###### Main}
+###### Main
 if __name__ == '__main__':
     logger.info(f"System Started: listening port {PORT}")
     app.run(host='0.0.0.0', port=PORT)

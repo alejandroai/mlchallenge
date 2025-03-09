@@ -1,4 +1,5 @@
 import hashlib
+import json
 
 class Finding:
     def __init__(self, name, analyzer, line_number, severity, extra_data=""):
@@ -33,8 +34,7 @@ def pwd_finder(config_data, device_type):
     def verify_cisco_type5(encrypted_password, plaintext_password):
         parts = encrypted_password.split('$')
         if len(parts) != 4 or parts[1] != '1':
-            raise ValueError("Formato de hash Tipo 5 no válido.")
-        
+            return [] # no se pudo analizar el password        
         salt = parts[2]
         stored_hash = parts[3]
         salted_password = salt + plaintext_password
