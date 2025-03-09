@@ -10,10 +10,9 @@ from psycopg2 import sql
 import bcrypt
 import requests
 from loguru import logger
-from flask_jwt_extended import decode_token
-from datetime import datetime, timezone
 import json
 import hashlib
+from analyzers import analyze_device, create_analyzer_dict,Finding
 
 ###### Cargar el archivo .env
 load_dotenv()
@@ -58,42 +57,7 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=JWT_EXPIRATION)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=REFRESH_EXPIRATION)
 jwt = JWTManager(app)
 
-# Diccionario con los diferentes analizadores para distintos dispositivos
-devices_analizer_list = {}
-
-
-### Clases
-class Finding:
-    def __init__(self, name, analyzer, line_number, severity,extra_data=""):
-        self.name = name
-        self.analyzer = analyzer
-        self.line_number = line_number
-        self.severity = severity
-        self.extra_data= extra_data
-
-    def to_json(self):
-        # Convertimos el objeto a un diccionario y luego a JSON
-        return json.dumps({
-            "name": self.name,
-            "analyzer": self.analyzer,
-            "line_number": self.line_number,
-            "severity": self.severity,
-            "extra_data": self.extra_data
-        }, indent=4)  # indent=4 para formato legible
-
-    def to_string(self):
-        # Convertimos el objeto a una cadena en formato propiedad: valor
-        return (
-            f"name: {self.name},"
-            f"analyzer: {self.analyzer},"
-            f"line_number: {self.line_number},"
-            f"severity: {self.severity},"
-            f"extra_data: {self.extra_data}"           
-        )
-
-
 ###### Funciones de base de datos 
-
 
 def connect_to_db():
     try:
@@ -221,207 +185,6 @@ def get_config_from_service(device_id):
             logger.warning(f"Error geting device_id info: {e}. Retry countdown: {retryCount}")
         retryCount -=1
     return None,None
-
-
-#Analizador que busca passwords
-def pwd_finder(config_data,device_type):
-    findings = []
-    black_list = ["cisco","admin","switch","NOMBRE_EMPRESA","root","redes","networking"]
-
-    def verify_cisco_type5(encrypted_password, plaintext_password):
-        # Extrae la sal del hash Tipo 5
-        parts = encrypted_password.split('$')
-        if len(parts) != 4 or parts[1] != '1':
-            print("no pudo examinarla")
-            raise ValueError("Formato de hash Tipo 5 no válido.")
-        
-        salt = parts[2]
-        stored_hash = parts[3]
-
-        # Concatena la sal y la contraseña en texto plano
-        salted_password = salt + plaintext_password
-
-        # Aplica MD5
-        md5_hash = hashlib.md5(salted_password.encode()).hexdigest()
-
-        # Compara el hash generado con el hash almacenado
-        return md5_hash == stored_hash
-
-    def evaluate_cisco_pwd(type_pwd,psswd,line_number):
-        local_findings = []
-        if type_pwd=="0" or type=="":
-            local_findings.append( Finding("Plain text password","pwd_finder",line_number,"HIGH"))
-            for pwd_black in black_list:
-                if psswd.find(pwd_black)>=0:
-                    local_findings.append( Finding("Insecure/common password","pwd_finder",line_number,"HIGH"))
-        elif type_pwd=="5":
-            print("tipo 5")
-            local_findings.append( Finding("MD5 password","pwd_finder",line_number,"MEDIUM"))
-            for pwd_black in black_list:
-                if verify_cisco_type5(psswd,pwd_black):
-                    local_findings.append( Finding("Insecure/common password","pwd_finder",line_number,"HIGH"))
-        elif type_pwd=="7":
-            local_findings.append( Finding("Reversible cipher stored password","pwd_finder",line_number,"LOW"))
-        else:
-            #tipos 8 y 9 son seguros
-            pass
-        return local_findings
-    
-
-    line_number = 0
-    for line in config_data.splitlines():
-        if len(line)>0 and line[0]!="!":
-            line = line.strip()
-            splitted_line = line.split(" ")
-            #linea con password
-            if (splitted_line[0]=="username" or (splitted_line[0]=="enable" and splitted_line[1]=="password") or splitted_line[0]=="password"):
-                try:
-                    password_pos=splitted_line.index("password")
-                    if password_pos==-1:
-                        password_pos=splitted_line.index("secret")
-                    password = ""
-                    cisco_pwd_type=""
-                    if len(splitted_line[password_pos+1])==1:
-                        cisco_pwd_type = splitted_line[password_pos+1]
-                        password = splitted_line[password_pos+2]
-                    else:
-                        cisco_pwd_type="0"
-                        password = splitted_line[password_pos+1]
-                    password_finding = evaluate_cisco_pwd(cisco_pwd_type,password,line_number)
-                    findings.extend(password_finding)
-                except:
-                    ## sentencia incompleta, no se puede analizar bajo estos supuestos
-                    pass
-        line_number+=1
-
-    return findings
-
-def cisco_good_practice(config_data,device_type):
-    local_findings = []
-    if (device_type!="switch"):
-        return []
-    found_aaa_setting=False
-    found_logging_on= False
-    found_archive= False 
-    found_rsyslog = False
-    dhcp_enabled = True
-    line_number=0
-
-    for line in config_data.splitlines():
-        if len(line)>0:
-            stripped_line = line.strip()
-            if stripped_line=="logging on":
-                found_logging_on=True
-            elif stripped_line=="archive" or stripped_line=="log config":
-                found_archive=True
-            elif stripped_line=="aaa new-model":
-                found_aaa_setting=True
-            elif stripped_line=="logging host":
-                found_aaa_setting=True
-            elif stripped_line.startswith("ip address"):
-                dhcp_enabled=False
-        line_number+=1
-    if not found_aaa_setting:
-        local_findings.append( Finding("Only local users are used","cisco_good_practice",line_number,"LOW"))
-    if not found_logging_on:
-        local_findings.append( Finding("Loggin in not enabled","cisco_good_practice",line_number,"LOW"))
-    if not found_archive:
-        local_findings.append( Finding("No logs for configuration ","cisco_good_practice",line_number,"LOW"))
-    if not found_rsyslog:
-        local_findings.append( Finding("No remote syslog configured ","cisco_good_practice",line_number,"LOW"))
-    if dhcp_enabled:
-        local_findings.append( Finding("DHCP for admin interfaz enabled","cisco_good_practice",line_number,"HIGH"))
-    return local_findings
-
-def cisco_intefaces_vlan(config_data,device_type):
-
-    def analize_current_config(config_lines,current_config_name):
-        local_findings = []
-        try:
-            if current_config_name == "interface":
-                #analizar interfaz
-                if config_lines[0].split()[1]=="vlan":
-                    #es config de vlan
-                    acl_enabled = False
-                    for l in config_lines:
-                        l = l.strip()
-                        if l.startswith("ip access-group"):
-                            acl_enabled=True
-                    if not(acl_enabled):
-                        vlan=config_lines[0].split()[2]
-                        local_findings.append( Finding("No ACL defined for vlan","cisco_intefaces_vlan",line_number,"HIGH","vlan"+ vlan)) 
-                else:
-                    need_vlan = True
-                    has_stp = False
-                    for l in config_lines:
-                        l = l.strip()
-                        if l.startswith("switchport access vlan") or l.startswith("switchport mode trunk") or l.startswith("switchport voice") :
-                            need_vlan = False
-                        if l.startswith("switchport access vlan"): 
-                            has_stp=True
-                    if need_vlan:
-                        port=config_lines[0].split()[1]
-                        local_findings.append( Finding("No VLAN defined for access port","cisco_intefaces_vlan",line_number,"HIGH", "port: "+ port))     
-                    if not has_stp:
-                        port=config_lines[0].split()[1]
-                        local_findings.append( Finding("No Spanning Tre Protocol for port","cisco_intefaces_vlan",line_number,"HIGH","port: "+ port))                
-        except:
-            pass
-        return local_findings
-    
-    local_findings = []
-    if (device_type!="switch"):
-        return []
-    
-    line_number=0
-    current_config_name = ""
-    config_lines=[]
-    for line in config_data.splitlines():
-        line = line.strip()
-        if len(line)>0:
-            if line[0]=="!" and current_config_name!="":
-                local_findings.extend(analize_current_config(config_lines,current_config_name))
-                config_lines=[]
-                current_config_name=""
-            elif current_config_name=="":
-                current_config_name= line.split(" ")[0]
-                config_lines.append(line)
-            else:
-                config_lines.append(line)
-        line_number+=1
-        
-    return local_findings
-        
-def create_analizer_dic():
-    global devices_analizer_list
-
-    devices_analizer_list["switch"]= [pwd_finder,cisco_good_practice,cisco_intefaces_vlan]
-    devices_analizer_list["router"]= [pwd_finder]
-
-def analize_device(config_data,device_type):
-    global devices_analizer_list
-    findings = []
-    if device_type not in devices_analizer_list:
-        raise Exception("There is no analizer for this type of device")
-    for analizer in devices_analizer_list[device_type]:
-        findings.extend(analizer(config_data,device_type))
-    
-    return findings
-
-###### Endpoints y logica del servicio http
-
-# security headers cuando implemente https
-# @app.after_request
-# def add_security_headers(response):
-#     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
-#     response.headers['Content-Security-Policy'] = "default-src 'self'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;"
-#     response.headers['X-Content-Type-Options'] = 'nosniff'
-#     response.headers['X-Frame-Options'] = 'DENY'
-#     response.headers['X-XSS-Protection'] = '1; mode=block'
-#     response.headers['Referrer-Policy'] = 'no-referrer-when-downgrade'
-#     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-#     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-#     return response
 
 # Manejar errores de token expirado
 @jwt.expired_token_loader
@@ -591,8 +354,7 @@ line vty 0 15
  password 5 $1$mERr$0e3c3061e517ccd4e88902fafe09b14f
  login
 !"""
-create_analizer_dic()
-result = analize_device(test_config,"switch")
+result = analyze_device(test_config,"switch")
 for f in result:
     print(f.to_string())
 exit()
