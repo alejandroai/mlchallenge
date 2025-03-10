@@ -59,38 +59,37 @@ jwt = JWTManager(app)
 
 ###### Funciones de base de datos 
 
-def connect_to_db():
-    try:
-        # Establecer la conexión con la base de datos
-        connection = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD
-        )
-        cursor = connection.cursor()
-        return connection, cursor
-        
-    except Exception as e:
-        logger.error(f"Could not connect to DB with user {DB_USER} to {DB_HOST}: {e}")
-        print(f"Error: {e}")
+def get_db_conection():
+    global dbconnection,dbcursor
+
+    if dbconnection==None or dbconnection.closed:
+        try:
+            # Establecer la conexión con la base de datos
+            dbconnection = psycopg2.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                dbname=DB_NAME,
+                user=DB_USER,
+                password=DB_PASSWORD
+            )
+            dbcursor = dbconnection.cursor()
+
+        except Exception as e:
+            logger.error(f"Could not connect to DB with user {DB_USER} to {DB_HOST}: {e}")
+            print(f"Error: {e}")
+    return dbconnection, dbcursor
+
 
 ###### Funciones de la logica del programa
 # obtener la password hasheada del user, para verificar login
 def get_password_hash(username):
-    global dbconnection, dbcursor
-    
     try:
         # Verificar si la conexión está cerrada y volver a abrirla si es necesario
-        if dbconnection==None or dbconnection.closed:
-            dbconnection, dbcursor = connect_to_db()
-        
+        dbconnection, dbcursor = get_db_conection()
         # Construir la consulta de manera segura y ejecutarla
         query = sql.SQL("SELECT password_hash FROM users WHERE username = %s")
         dbcursor.execute(query, (username,))
         result = dbcursor.fetchone()
-        print("Result:",result)
         
         # Verificar si se encontró el usuario
         if result is None:
@@ -103,7 +102,16 @@ def get_password_hash(username):
         logger.error(f"Something goes wrong asking for password: {e}")
         raise Exception(f"Error while getting password_hash")
 
-
+def get_user_id(username):
+    dbconnection, dbcursor = get_db_conection()
+    try:
+        query = sql.SQL("SELECT id FROM users WHERE username = %s")
+        dbcursor.execute(query, (username,))
+        result = dbcursor.fetchone()
+    except Exception as e:
+        print(e)
+    return result[0]
+    
 # Función para sanitizar y validar el username
 def sanitize_username(username):
     if not username:
@@ -244,7 +252,31 @@ def refresh():
 
 @app.route('/analize', methods=['GET'])
 @jwt_required()
-def get_analize():
+def get_analize():    
+    def save_analysis(owner_id,device_id,device_name,device_type,report): # inserta el analisis en la DB
+        # Datos a insertar
+        dbconnection, dbcursor = get_db_conection()
+        report = json.dumps(report)
+        data = {
+            'owner_id': owner_id,  # ID del usuario dueño del reporte
+            'result': report,  # Resultado del reporte
+            'device_id': device_id,  # ID del dispositivo
+            'device_name': device_name,  # Nombre del dispositivo
+            'device_type': device_type  # Tipo del dispositivo
+        }
+        print(data)
+
+        # Consulta SQL para insertar datos
+        query = sql.SQL("""
+            INSERT INTO reports (owner_id, result, device_id, device_name, device_type)
+            VALUES (%(owner_id)s, %(result)s, %(device_id)s, %(device_name)s, %(device_type)s)
+            RETURNING id;
+        """)
+        dbcursor.execute(query, data)
+        dbconnection.commit()
+        report_id = dbcursor.fetchone()[0]  # Obtener el ID generado
+
+        return report_id
     # Obtener el parámetro device_id
     device_id = request.args.get('device_id')
     # Validar que device_id sea un número
@@ -253,7 +285,6 @@ def get_analize():
         return jsonify({"error": "Valid device_id required"}), 400
 
     # Verificar si el dispositivo existe
-    print("going to get info")
     response_code, config_respone = get_config_from_service(device_id)
     if response_code==None:
         logger.error(f"GET analyze from {request.remote_addr} got 500: is not posible to get info from config server")
@@ -263,15 +294,91 @@ def get_analize():
             logger.error(f"GET analyze from {request.remote_addr} got 404: device not found on config server")
             return jsonify({"error": "Device not found"}), 404
         elif response_code==200:
-            logger.info((f"GET analyze from {request.remote_addr} got 200: Requested analysis"))
             device_configuration=config_respone["config"]
-            print("CONFIG",device_configuration)
             # analize
-            analysis_id=1
-            analysis_report=""
-            # save report
-            # return aswer
-            return jsonify({"device_id": device_id,"device_name":config_respone["device_name"],"device_type":config_respone["device_type"], "analysis_id":analysis_id,"analysis_result":analysis_report})
+            analysis_id=0
+            analysis_report_json=""
+            owner_id = 0
+            try:
+                analysis_report_json = analyze_device(device_configuration,config_respone["device_type"])
+                print("analysis_report_json",analysis_report_json)
+            except:
+                logger.error("GET analyze from {request.remote_addr} got 500:Error while analysis")
+                return jsonify({"error": "Generic Internal server error"}), 500 #error inesperado analizando el archivo
+            try:
+                username = get_jwt_identity()
+                owner_id = get_user_id(username)
+            except Exception as e:
+                logger.error(f"GET analyze from {request.remote_addr} got 500:Error while searching for user id in db: {e}")
+                return jsonify({"error": "Generic Internal server error"}), 500 #error inesperado analizando el archivo
+            try:
+                analysis_id = save_analysis(owner_id,device_id,config_respone["device_name"],config_respone["device_type"],analysis_report_json)
+            except Exception as e: 
+                logger.error(f"GET analyze from {request.remote_addr} got 500:Error while saving report in db {e}")
+                return jsonify({"error": "Generic Internal server error"}), 500 #error inesperado analizando el archivo   
+            logger.info((f"GET analyze from {request.remote_addr} got 200: Requested analysis"))
+            print(analysis_report_json)
+            return jsonify({"analisys_id":analysis_id,"device_id": device_id,"device_name":config_respone["device_name"],"device_type":config_respone["device_type"],"analysis_result":analysis_report_json})
+
+@app.route('/report', methods=['GET'])
+@jwt_required()
+def get_report():
+    # Obtener el parámetro device_id
+    report_id = request.args.get('report_id')
+
+    # Validar que report_id sea un número
+    if not report_id or not report_id.isdigit():
+        logger.info(f"GET REPORT from {request.remote_addr} got 400")
+        return jsonify({"error": "Valid report_id required"}), 400
+
+    # Obtener el user_id del JWT
+    user_name = get_jwt_identity()
+    try:
+        user_id = get_user_id(user_name)
+    except:
+        logger.info(f"GET REPORT from {request.remote_addr} got 500: Cant find user {user_id} in db")
+        return jsonify({"error": "Generic internal error"}), 500     
+    # Conectar a la base de datos y obtener el report
+    try:
+        conn, cursor = get_db_conection()
+        # Consulta para obtener el report del dispositivo y verificar el owner_id
+        query = """
+            SELECT id, owner_id, result, device_id, device_name, device_type, created_at
+            FROM reports
+            WHERE id = %s
+            ORDER BY created_at DESC
+            LIMIT 1;
+        """
+        cursor.execute(query, (report_id,))
+        report = cursor.fetchone()
+
+        # Verificar si el report existe
+        if not report:
+            logger.info(f"GET REPORT from {request.remote_addr} got 404: Report not found for device {report_id}")
+            return jsonify({"error": "Report not found"}), 404
+
+        # Verificar que el owner_id del report coincida con el user_id del JWT
+        if report[1] != user_id:  # report[1] es el owner_id
+            logger.info(f"GET REPORT from {request.remote_addr} got 401: Unauthorized access to report for device {report_id}")
+            return jsonify({"error": "Unauthorized"}), 401
+
+        # Construir la respuesta
+        report_data = {
+            "id": report[0],
+            "owner_id": report[1],
+            "result": report[2],
+            "device_id": report[3],
+            "device_name": report[4],
+            "device_type": report[5],
+            "created_at": report[6].isoformat() if report[6] else None
+        }
+
+        logger.info(f"GET REPORT from {request.remote_addr} for device {report_id} got 200")
+        return jsonify(report_data), 200
+
+    except Exception as e:
+        logger.error(f"GET REPORT from {request.remote_addr} got 500: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
 
 ###### Main
 if __name__ == '__main__':

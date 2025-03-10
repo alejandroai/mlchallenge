@@ -1,5 +1,4 @@
 import hashlib
-import json
 
 class Finding:
     def __init__(self, name, analyzer, line_number, severity, extra_data=""):
@@ -9,14 +8,14 @@ class Finding:
         self.severity = severity
         self.extra_data = extra_data
 
-    def to_json(self):
-        return json.dumps({
+    def to_dict(self):
+        return {
             "name": self.name,
             "analyzer": self.analyzer,
             "line_number": self.line_number,
             "severity": self.severity,
             "extra_data": self.extra_data
-        }, indent=4)
+        }
 
     def to_string(self):
         return (
@@ -193,4 +192,7 @@ def analyze_device(config_data, device_type):
         raise Exception("There is no analyzer for this type of device")
     for analyzer in analyzers[device_type]:
         findings.extend(analyzer(config_data, device_type))
-    return findings
+    findings_json=[]
+    for f in findings:
+        findings_json.append(f.to_dict())
+    return {"count":len(findings),"items":findings_json}
