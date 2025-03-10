@@ -14,10 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar el código de la aplicación
 COPY . .
 
-# EXPOSE 5000
+EXPOSE 8080
 # Crear la carpeta configs si no existe
 # RUN mkdir -p /app/data && chown uanalysisservice:uanalysisservice /app/data
-# RUN mkdir -p /app/log && chown uanalysisservice:uanalysisservice /app/log
+RUN mkdir -p /app/log && chown uanalysisservice:uanalysisservice /app/log
 
 # Copiar los archivos de configuración
 # COPY --chown=uanalysisservice:uanalysisservice data /app/data

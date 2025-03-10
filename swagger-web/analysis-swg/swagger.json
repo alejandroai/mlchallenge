@@ -1,0 +1,359 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API de Autenticación, Reportes y Análisis",
+    "description": "API para iniciar sesión, obtener reportes de análisis y realizar análisis de dispositivos",
+    "version": "1.0.0"
+  },
+  "host": "localhost:5000",
+  "basePath": "/",
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/login": {
+      "post": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Autenticación de usuario y generación de tokens JWT",
+        "description": "Este endpoint permite a un usuario autenticarse mediante un nombre de usuario y una contraseña. Si las credenciales son válidas, se generan y devuelven un access token y un refresh token.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "username",
+                "password"
+              ],
+              "properties": {
+                "username": {
+                  "type": "string",
+                  "example": "admin"
+                },
+                "password": {
+                  "type": "string",
+                  "example": "MySecurePass123"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Autenticación exitosa. Se devuelve el access token y refresh token.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "access_token": {
+                  "type": "string",
+                  "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                },
+                "refresh_token": {
+                  "type": "string",
+                  "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciales inválidas (usuario o contraseña incorrectos).",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Bad username or password"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Generic Internal Server Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/refresh": {
+      "post": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Renovar el access token usando el refresh token",
+        "description": "Este endpoint permite renovar el access token usando el refresh token proporcionado. El usuario debe estar autenticado mediante JWT.",
+        "responses": {
+          "200": {
+            "description": "Se genera un nuevo access token.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "access_token": {
+                  "type": "string",
+                  "example": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh token inválido o expirado.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Invalid refresh token"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/report": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Obtener un reporte de análisis específico",
+        "description": "Este endpoint permite recuperar un reporte de análisis previamente generado para un dispositivo. El usuario debe estar autenticado mediante JWT y solo podrá acceder a reportes de su propiedad.",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "query",
+            "required": true,
+            "type": "integer",
+            "description": "ID único del reporte de análisis a consultar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reporte recuperado exitosamente.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": 101
+                },
+                "owner_id": {
+                  "type": "integer",
+                  "example": 12
+                },
+                "result": {
+                  "type": "object",
+                  "example": {
+                    "count": 1,
+                    "items": [
+                      {
+                        "name": "Plain text password",
+                        "analyzer": "pwd_finder",
+                        "line_number": 71,
+                        "severity": "HIGH",
+                        "extra_data": ""
+                      }
+                    ]
+                  }
+                },
+                "device_id": {
+                  "type": "integer",
+                  "example": 123
+                },
+                "device_name": {
+                  "type": "string",
+                  "example": "Switch Principal"
+                },
+                "device_type": {
+                  "type": "string",
+                  "example": "Switch"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2024-03-01T12:34:56.789Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error en la solicitud. `report_id` inválido o no proporcionado.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Valid report_id required"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado. El reporte no pertenece al usuario autenticado.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Unauthorized"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reporte no encontrado.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Report not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor al intentar obtener el reporte.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Internal server error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/analysis": {
+      "get": {
+        "tags": [
+          "Análisis"
+        ],
+        "summary": "Analizar configuración de un dispositivo",
+        "description": "Este endpoint permite realizar un análisis automático sobre la configuración de un dispositivo de red registrado. El análisis identifica vulnerabilidades, contraseñas en texto plano, configuraciones inseguras y otras prácticas que podrían afectar la seguridad del dispositivo. El resultado del análisis se almacena y se devuelve al usuario. Requiere autenticación JWT.",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": true,
+            "type": "integer",
+            "description": "ID numérico del dispositivo a analizar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Análisis realizado con éxito.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "analisys_id": {
+                  "type": "integer",
+                  "example": 42
+                },
+                "device_id": {
+                  "type": "integer",
+                  "example": 123
+                },
+                "device_name": {
+                  "type": "string",
+                  "example": "Router Principal"
+                },
+                "device_type": {
+                  "type": "string",
+                  "example": "Router"
+                },
+                "analysis_result": {
+                  "type": "object",
+                  "example": {
+                    "count": 3,
+                    "items": [
+                      {
+                        "name": "Plain text password",
+                        "analyzer": "pwd_finder",
+                        "line_number": 71,
+                        "severity": "HIGH",
+                        "extra_data": ""
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error en la solicitud. El parámetro `device_id` es inválido o no proporcionado.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Valid device_id required"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El dispositivo no fue encontrado en el servidor de configuración.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Device not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor al intentar obtener información, analizar o guardar datos.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "Generic Internal server error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "securityDefinitions": {
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "El token JWT debe ser proporcionado en la cabecera de la solicitud."
+    }
+  }
+}

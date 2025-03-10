@@ -22,7 +22,6 @@ JWT_SECRET = os.getenv("JWT_SECRET", "super-secret")
 JWT_EXPIRATION = int(os.getenv("JWT_EXPIRATION", 30))
 REFRESH_EXPIRATION = int(os.getenv("JWT_EXPIRATION", 1))
 #Para el sanitizado de datos.
-#Todo: colocarlos en la DB
 MIN_PASSWORD = int(os.getenv("MIN_PASSWORD", 8))
 MAX_PASSWORD = int(os.getenv("MAX_PASSWORD", 50))
 MIN_USERNAME = int(os.getenv("MIN_USERNAME", 3))
@@ -144,21 +143,6 @@ def sanitize_password(password):
     
     return password
 
-###### Endpoints y logica del servicio http
-
-# security headers cuando implemente https
-# @app.after_request
-# def add_security_headers(response):
-#     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
-#     response.headers['Content-Security-Policy'] = "default-src 'self'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;"
-#     response.headers['X-Content-Type-Options'] = 'nosniff'
-#     response.headers['X-Frame-Options'] = 'DENY'
-#     response.headers['X-XSS-Protection'] = '1; mode=block'
-#     response.headers['Referrer-Policy'] = 'no-referrer-when-downgrade'
-#     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-#     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-#     return response
-
 # Manejar errores de token expirado
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
@@ -179,6 +163,69 @@ def missing_token_callback(error):
 
 @app.route('/login', methods=['POST'])
 def login():
+    """
+    Inicio de sesión y obtención de tokens JWT.
+    ---
+    tags:
+      - Autenticación
+    summary: Autenticación de usuario y generación de tokens JWT
+    description: >
+      Este endpoint permite a un usuario autenticarse mediante un nombre de usuario y una contraseña. 
+      Si las credenciales son válidas, se generan y devuelven un access token y un refresh token. 
+      En caso contrario, se devuelve un error genérico para evitar la divulgación de información sensible.
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - username
+            - password
+          properties:
+            username:
+              type: string
+              description: Nombre de usuario para autenticación.
+              example: "admin"
+            password:
+              type: string
+              description: Contraseña del usuario.
+              example: "MySecurePass123"
+    responses:
+      200:
+        description: Autenticación exitosa. Se devuelve el access token y refresh token.
+        schema:
+          type: object
+          properties:
+            access_token:
+              type: string
+              description: Token JWT de acceso.
+              example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+            refresh_token:
+              type: string
+              description: Token JWT de refresco.
+              example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+      401:
+        description: Credenciales inválidas (usuario o contraseña incorrectos).
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Bad username or password"
+      500:
+        description: Error interno del servidor (problemas al conectar con la base de datos u otros errores inesperados).
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Generic Internal Server Error"
+    """
     #obtener el user y sanitizarlo 
     username = request.json.get('username', None)
     username = sanitize_username(username)
@@ -218,6 +265,70 @@ def refresh():
 @app.route('/config', methods=['GET'])
 @jwt_required()
 def get_config():
+    """
+    Obtener configuración del dispositivo.
+    ---
+    tags:
+      - Dispositivos
+    summary: Obtener la configuración actual de un dispositivo
+    description: >
+      Este endpoint permite recuperar el archivo de configuración de un dispositivo específico. 
+      El usuario debe estar autenticado mediante JWT. El resultado incluye el contenido completo de la configuración.
+    parameters:
+      - name: device_id
+        in: query
+        type: integer
+        required: true
+        description: ID del dispositivo del cual se desea obtener la configuración.
+    responses:
+      200:
+        description: Configuración recuperada exitosamente.
+        schema:
+          type: object
+          properties:
+            device_id:
+              type: integer
+              description: ID del dispositivo.
+              example: 123
+            device_name:
+              type: string
+              description: Nombre del dispositivo.
+              example: "Switch Principal"
+            device_type:
+              type: string
+              description: Tipo del dispositivo.
+              example: "Switch"
+            config:
+              type: string
+              description: Contenido completo del archivo de configuración.
+              example: "hostname Switch\ninterface GigabitEthernet0/1\nswitchport mode access\n..."
+      400:
+        description: Error en la solicitud. `device_id` inválido o no proporcionado.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Valid device_id required"
+      404:
+        description: Dispositivo no encontrado en la base de datos.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Device not found"
+      500:
+        description: Archivo de configuración no encontrado o error interno.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Configuration file not found"
+    security:
+      - BearerAuth: []
+    """
     # Obtener el parámetro device_id
     device_id = request.args.get('device_id')
     # Validar que device_id sea un número
@@ -245,7 +356,7 @@ def get_config():
         return jsonify({"error": "Configuration file not found"}), 500
 
     logger.info(f"GET config from {request.remote_addr} for device {device_id} got 200")
-    return jsonify({"device_id": device_id,"device_name":device_data[1],"device_type":device_data[1], "config": config})
+    return jsonify({"device_id": device_id,"device_name":device_data[0],"device_type":device_data[1], "config": config})
 
 ###### Main}
 if __name__ == '__main__':
