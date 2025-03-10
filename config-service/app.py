@@ -17,7 +17,7 @@ load_dotenv()
 DATA_DIR = os.getenv("DATA_DIR", "data")
 LOG_DIR = os.getenv("LOG_DIR", "log")
 #web app
-PORT = int(os.getenv("PORT", 5000))
+PORT = int(os.getenv("PORT", 8080))
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret")
 JWT_EXPIRATION = int(os.getenv("JWT_EXPIRATION", 30))
 REFRESH_EXPIRATION = int(os.getenv("JWT_EXPIRATION", 1))

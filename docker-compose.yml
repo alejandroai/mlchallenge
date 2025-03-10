@@ -5,8 +5,8 @@ services:
     build:
       context: ./db
       dockerfile: Dockerfile
-    ports:
-      - "5432:5432"
+    # ports: #Para pruebas
+    #   - "5432:5432"
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: secret
@@ -28,8 +28,8 @@ services:
       DB_NAME: config_db
       DB_USER: uconfig
       DB_PASSWORD: ${UCONFIG_PASSWORD}
-    ports:
-      - "5000:5000"
+    # ports: #Para pruebas
+    #   - "5000:5000"
     networks:
       - internal-network
     depends_on:
@@ -41,7 +41,7 @@ services:
       context: ./analysis-service
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8080:80"
     environment:
       DB_HOST: db
       DB_PORT: 5432

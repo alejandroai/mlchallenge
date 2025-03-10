@@ -93,7 +93,7 @@ def get_password_hash(username):
         # Verificar si se encontró el usuario
         if result is None:
             logger.error("User not found "+ username)
-            raise ValueError("User not found")
+            return None
         else:
             # Retornar el password_hash
             return result[0]
@@ -222,14 +222,20 @@ def login():
     password = sanitize_password(password).encode('utf-8')
     hashed_password = ""
     try:
-        hashed_password=get_password_hash(username).encode('utf-8')
+        hashed_password=get_password_hash(username)
+        if hashed_password!=None:
+            hashed_password = hashed_password.encode('utf-8')
     except ValueError:
         logger.warning(f"GET login from {request.remote_addr} got 401, asking for non existing user {username}")
         return jsonify({"error": "Bad username or password"}), 401 #error generico para no generar una vul de information disclosure "Cryptographic Failures" (A02:2021)
     except Exception:
         logger.error(f"GET login from {request.remote_addr} got 500, problem with DB connection")
         return jsonify({"error": "Generic Internal Server Error"}), 500
-    
+
+    if hashed_password==None:
+        logger.warning(f"GET login from {request.remote_addr} got 401, wrong password")
+        return jsonify({"error": "Bad username or password"}), 401 #error generico para no generar una vul de information disclosure "Cryptographic Failures" (A02:2021)    
+
     if not(bcrypt.checkpw(password,hashed_password)):
         logger.warning(f"GET login from {request.remote_addr} got 401, wrong password")
         return jsonify({"error": "Bad username or password"}), 401 #error generico para no generar una vul de information disclosure "Cryptographic Failures" (A02:2021)

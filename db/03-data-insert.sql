@@ -14,9 +14,9 @@ INSERT INTO users (username, password_hash) VALUES
 \c analysis_db;
 -- Insertar datos de ejemplo en la tabla users
 INSERT INTO users (username, password_hash) VALUES
-('analyst_test', '$2b$12$OL7Nu.3sXiuLPGxa2HMSR./rELbJ2fLWbliBWrKNl7qgPuQt5PFIa');
+('analyst_test', '$2b$12$OL7Nu.3sXiuLPGxa2HMSR./rELbJ2fLWbliBWrKNl7qgPuQt5PFIa'),
+('analyst_other', 'cant-login-just-for-test');
 
 -- -- Insertar datos de ejemplo en la tabla reports
--- INSERT INTO reports (owner_id, result) VALUES
--- (1, 'Análisis de seguridad completado para el dispositivo 1'),
--- (2, 'Análisis de seguridad completado para el dispositivo 2');
+INSERT INTO reports (owner_id, result, device_id, device_name, device_type)
+VALUES (2, 'Resultados dummy', '1', 'Dispositivo de Prueba', 'switch');
