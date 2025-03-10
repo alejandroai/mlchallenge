@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentación de Mi API</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@3/swagger-ui.css">
+</head>
+<body>
+    <div id="swagger-ui"></div>
+
+    <!-- Cargar Swagger UI JS -->
+    <script src="https://unpkg.com/swagger-ui-dist@3/swagger-ui-bundle.js"></script>
+    <!-- Cargar el preset Standalone -->
+    <script src="https://unpkg.com/swagger-ui-dist@3/swagger-ui-standalone-preset.js"></script>
+
+    <script>
+        // Cargar el archivo swagger.json
+        const url = 'swagger.json'; // Ruta relativa al archivo JSON
+
+        // Inicializar Swagger UI
+        SwaggerUIBundle({
+            url: url, // Especificar la URL del archivo JSON
+            dom_id: '#swagger-ui', // Elemento donde se renderizará la UI
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset // Usar el preset Standalone
+            ],
+            layout: "BaseLayout"
+        });
+    </script>
+</body>
+</html>

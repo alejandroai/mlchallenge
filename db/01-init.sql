@@ -45,6 +45,9 @@ CREATE TABLE reports (
     id SERIAL PRIMARY KEY,
     owner_id INT REFERENCES users(id) ON DELETE NO ACTION,
     result TEXT,
+    device_id VARCHAR(100) NOT NULL,
+    device_name VARCHAR(100) NOT NULL,
+    device_type VARCHAR(50) NOT NULL,   
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

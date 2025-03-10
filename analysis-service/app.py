@@ -13,7 +13,6 @@ from loguru import logger
 import json
 import hashlib
 from analyzers import analyze_device, create_analyzer_dict,Finding
-
 ###### Cargar el archivo .env
 load_dotenv()
 
@@ -252,7 +251,84 @@ def refresh():
 
 @app.route('/analize', methods=['GET'])
 @jwt_required()
-def get_analize():    
+def get_analize():
+    """
+    Realizar análisis de configuración de un dispositivo.
+    ---
+    tags:
+      - Análisis
+    summary: Analizar configuración de un dispositivo
+    description: >
+      Este endpoint permite realizar un análisis automático sobre la configuración de un dispositivo de red registrado.
+      El análisis identifica vulnerabilidades, contraseñas en texto plano, configuraciones inseguras y otras prácticas
+      que podrían afectar la seguridad del dispositivo. El resultado del análisis se almacena y se devuelve al usuario.
+      Requiere autenticación JWT.
+    parameters:
+      - name: device_id
+        in: query
+        type: integer
+        required: true
+        description: ID numérico del dispositivo a analizar.
+    responses:
+      200:
+        description: Análisis realizado con éxito.
+        schema:
+          type: object
+          properties:
+            analisys_id:
+              type: integer
+              description: ID único del análisis realizado.
+              example: 42
+            device_id:
+              type: integer
+              description: ID del dispositivo analizado.
+              example: 123
+            device_name:
+              type: string
+              description: Nombre del dispositivo.
+              example: "Router Principal"
+            device_type:
+              type: string
+              description: Tipo del dispositivo.
+              example: "Router"
+            analysis_result:
+              type: object
+              description: Resultado del análisis.
+              example:
+                count: 3
+                items:
+                  - name: "Plain text password"
+                    analyzer: "pwd_finder"
+                    line_number: 71
+                    severity: "HIGH"
+                    extra_data: ""
+      400:
+        description: Error en la solicitud. El parámetro `device_id` es inválido o no proporcionado.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Valid device_id required"
+      404:
+        description: El dispositivo no fue encontrado en el servidor de configuración.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Device not found"
+      500:
+        description: Error interno del servidor al intentar obtener información, analizar o guardar datos.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Generic Internal server error"
+    security:
+      - BearerAuth: []
+    """     
     def save_analysis(owner_id,device_id,device_name,device_type,report): # inserta el analisis en la DB
         # Datos a insertar
         dbconnection, dbcursor = get_db_conection()
@@ -323,6 +399,99 @@ def get_analize():
 @app.route('/report', methods=['GET'])
 @jwt_required()
 def get_report():
+    """
+    Obtener reporte de análisis por ID.
+    ---
+    tags:
+      - Reportes
+    summary: Obtener un reporte de análisis específico
+    description: >
+      Este endpoint permite recuperar un reporte de análisis previamente generado para un dispositivo. 
+      El usuario debe estar autenticado mediante JWT y solo podrá acceder a reportes de su propiedad. 
+      El reporte contiene información detallada del análisis de seguridad realizado sobre el dispositivo.
+    parameters:
+      - name: report_id
+        in: query
+        type: integer
+        required: true
+        description: ID único del reporte de análisis a consultar.
+    responses:
+      200:
+        description: Reporte recuperado exitosamente.
+        schema:
+          type: object
+          properties:
+            id:
+              type: integer
+              description: ID del reporte.
+              example: 101
+            owner_id:
+              type: integer
+              description: ID del propietario del reporte.
+              example: 12
+            result:
+              type: object
+              description: Resultado detallado del análisis.
+              example:
+                count: 3
+                items:
+                  - name: "Plain text password"
+                    analyzer: "pwd_finder"
+                    line_number: 71
+                    severity: "HIGH"
+                    extra_data: ""
+            device_id:
+              type: integer
+              description: ID del dispositivo analizado.
+              example: 123
+            device_name:
+              type: string
+              description: Nombre del dispositivo.
+              example: "Switch Principal"
+            device_type:
+              type: string
+              description: Tipo del dispositivo.
+              example: "Switch"
+            created_at:
+              type: string
+              format: date-time
+              description: Fecha y hora en la que se generó el reporte.
+              example: "2024-03-01T12:34:56.789Z"
+      400:
+        description: Error en la solicitud. `report_id` inválido o no proporcionado.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Valid report_id required"
+      401:
+        description: No autorizado. El reporte no pertenece al usuario autenticado.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Unauthorized"
+      404:
+        description: Reporte no encontrado.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Report not found"
+      500:
+        description: Error interno del servidor al intentar obtener el reporte.
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "Internal server error"
+    security:
+      - BearerAuth: []
+    """
     # Obtener el parámetro device_id
     report_id = request.args.get('report_id')
 
@@ -366,7 +535,7 @@ def get_report():
         report_data = {
             "id": report[0],
             "owner_id": report[1],
-            "result": report[2],
+            "result": json.loads(report[2]),
             "device_id": report[3],
             "device_name": report[4],
             "device_type": report[5],
