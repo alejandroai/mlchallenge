@@ -33,13 +33,13 @@ Un servicio que tenga la responsabilidad de analizar el archivo de configuració
 
 ## Descripcion de la solucion
 
-Para implementar la solucion opté por el lenguaje python y la libreria Flask. Todos los servicios web corren con una imagen hardenizada de nginx con la distro Alpine. Se utiliza guinicorn en los contenedores para levantar el servicio de Python Flask para no correrlo directamente, escuchando internamente dentro del contenedor en el puerto 8080. El nginx realiza un proxy reverso al mismo. Las dependencias de python en requeriments.txt setean la versión de cada librería ya que es una buena práctica.
+Para implementar la solucion opté por el lenguaje python y la libreria Flask. Todos los servicios web corren con una imagen hardenizada de nginx con la distro python:3.9-slim. Se utiliza guinicorn en los contenedores para levantar el servicio de Python Flask para no correrlo directamente, escuchando internamente dentro del contenedor en el puerto 8080. El nginx realiza un proxy reverso al mismo. Las dependencias de python en requeriments.txt setean la versión de cada librería ya que es una buena práctica.
 
 Las credenciales que se encontraban en texto plano se separaron en archivo .env y .tdata que fueron agregados al .gitignore.
 
 Se utilizar una librería para realizar los logs de ambas aplicaciones. 
 
-Solo se armaron nat para el puerto 8080 del contenedor de analysis-service (accesible fuera del entorno docker) y para el contenedor swagger-web en el puerto 80. 
+Solo se armaron nat para el puerto 8080 del contenedor de analysis-service (accesible fuera del entorno docker) y para el contenedor swagger-web en el puerto 8000. 
 
 Cada aplicacion tiene su respectiva base de datos en el contenedor db. Las credenciales por defecto son reemplazadas por el script "set-users.sh" para tomar las variables de entorno
 
@@ -47,7 +47,7 @@ Cada aplicacion tiene su respectiva base de datos en el contenedor db. Las crede
 
 - **refresh token:** implemente la funcionalidad de "refresh token" pero no se utilizó ni en el analisis
 - **unificar modulos**: unificar funcionalidad de config-service y analysis-service para no tener que mantener dos códigos muy similares en cuanto a login y manejo de tokens y logs
-- **KPI:** implementar una CA con un docker basico con alpine. Generar los certificados en los config-service y analysis-service. Enviar la solicitud de firma a esta CA. Cargar los certificados firmados y reinicar los servicio de nginx. Compartir el certificado de CA en el contenedor de analysis-service para que confie a traves de KPI en el certificado firmado del config-service. No sería recomendable, pero opcionalmente esta CA se podría instalar en la PC de las pruebas
+- **KPI:** implementar una CA con un docker basico con Alpine. Generar los certificados en los config-service y analysis-service. Enviar la solicitud de firma a esta CA. Cargar los certificados firmados y reinicar los servicio de nginx. Compartir el certificado de CA en el contenedor de analysis-service para que confie a traves de KPI en el certificado firmado del config-service. No sería recomendable, pero opcionalmente esta CA se podría instalar en la PC de las pruebas
 - **utilizar usuario no root para los contenedores:** cree los usuarios y grupos, pero no llegue a implementar ejecutar los procesos con otro usuario que no sea root ya que es una mala práctica de seguridad dejar los servicios corriendo como root
 -**endpoint ABM**: endpoint para gestionar usuarios y configuraciones
 -**implementar endpoints para listar dispositivos:** 
@@ -123,8 +123,8 @@ Esto levantara los siguientes contenedores:
 
 Una vez levantado el proyecto, se puede consultar la documentación interactiva (Swagger UI) en:
 
-- [http://127.0.0.1:8080/config-swg/](http://127.0.0.1:8080/config-swg/)
-- [http://127.0.0.1:8080/analysis-swg/](http://127.0.0.1:8080/analysis-swg/)
+- [http://127.0.0.1:8000/config-swg/](http://127.0.0.1:8000/config-swg/)
+- [http://127.0.0.1:8000/analysis-swg/](http://127.0.0.1:8000/analysis-swg/)
 
 **Nota:** La API estará expuesta en [http://127.0.0.1:8080](http://127.0.0.1:8080).
 
