@@ -24,7 +24,6 @@ RUN mkdir -p /app/log && chown uconfigservice:uconfigservice /app/log
 
 # Copiar los archivos de configuración
 COPY --chown=uconfigservice:uconfigservice data /app/data
-COPY --chown=uconfigservice:uconfigservice log /app/log
 
 # Copiar el script de inicio y darle permisos de ejecución
 COPY start.sh /start.sh
