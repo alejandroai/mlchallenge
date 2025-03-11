@@ -1,0 +1,123 @@
+{
+	"info": {
+		"_postman_id": "8b96a8d2-b475-4626-9678-ae3e38e933b9",
+		"name": "ANALYSIS SERVICE",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "33904101"
+	},
+	"item": [
+		{
+			"name": "LOGIN",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"username\":\"analyst_test\",\r\n    \"password\":\"PASSWORD_COMPARTIDA_POR_CORREO\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "127.0.0.1:8080/login",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8080",
+					"path": [
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET ANALIZE",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc0MTYzNzQ1MSwianRpIjoiNzIwNzQ0MGUtYzkyMi00MmExLWFkY2EtMDFjMjMyOWJlMWFhIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImFuYWx5c3RfdGVzdCIsIm5iZiI6MTc0MTYzNzQ1MSwiY3NyZiI6IjI4ZjA5ZWNiLWEzNTktNGM5MS04NDA0LTA1ZGQxZmJkMWI1MyIsImV4cCI6MTc0MTYzOTI1MX0.YSetf8YdB4sCToxNLEM4eduB7eJqgB0XSrJg9bPMuow",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "127.0.0.1:8080/analize?device_id=1",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8080",
+					"path": [
+						"analize"
+					],
+					"query": [
+						{
+							"key": "device_id",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET REPORT",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc0MTYwNjUxOCwianRpIjoiMzkxNWVlMGYtMGYyMC00MmJjLTljZGYtZTE2NGIzNmE3OTI1IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImFuYWx5c3RfdGVzdCIsIm5iZiI6MTc0MTYwNjUxOCwiY3NyZiI6ImMwNWRmZGNhLWRmOWUtNGU3NC1iNGNjLTE2ZDhmNGU0NmQ0OSIsImV4cCI6MTc0MTYwODMxOH0.ojvKHgFalTGXhM0Dooel4UNzjKz01d5hazeP6gpufSg",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "127.0.0.1:8080/report?report_id=1",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8080",
+					"path": [
+						"report"
+					],
+					"query": [
+						{
+							"key": "report_id",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
