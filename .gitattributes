@@ -1,0 +1,7 @@
+# Forzar LF en todos los archivos de texto
+* text=auto eol=lf
+
+# Opcional: Forzar específicamente para scripts
+*.sh text eol=lf
+*.py text eol=lf
+*.conf text eol=lf
