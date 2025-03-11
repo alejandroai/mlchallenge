@@ -19,4 +19,5 @@ INSERT INTO users (username, password_hash) VALUES
 
 -- -- Insertar datos de ejemplo en la tabla reports
 INSERT INTO reports (owner_id, result, device_id, device_name, device_type)
-VALUES (2, 'Resultados dummy', '1', 'Dispositivo de Prueba', 'switch');
+VALUES (2, 'Resultados dummy', '1', 'Dispositivo de Prueba', 'switch'),
+VALUES (1, 'Resultados dummy', '1', 'Dispositivo de Prueba', 'switch');
