@@ -35,13 +35,15 @@ Un servicio que tenga la responsabilidad de analizar el archivo de configuració
 
 Para implementar la solucion opté por el lenguaje python y la libreria Flask. Todos los servicios web corren con una imagen hardenizada de nginx con la distro python:3.9-slim. Se utiliza guinicorn en los contenedores para levantar el servicio de Python Flask para no correrlo directamente, escuchando internamente dentro del contenedor en el puerto 8080. El nginx realiza un proxy reverso al mismo. Las dependencias de python en requeriments.txt setean la versión de cada librería ya que es una buena práctica.
 
-Las credenciales que se encontraban en texto plano se separaron en archivo .env y .tdata que fueron agregados al .gitignore.
+Las credenciales que se encuentran en texto plano se separaron en archivo .env y .tdata. Las mismas fuera agregados al .gitignore para que nunca se suban al repositorio.
 
 Se utilizar una librería para realizar los logs de ambas aplicaciones. 
 
 Solo se armaron nat para el puerto 8080 del contenedor de analysis-service (accesible fuera del entorno docker) y para el contenedor swagger-web en el puerto 8000. 
 
-Cada aplicacion tiene su respectiva base de datos en el contenedor db. Las credenciales por defecto son reemplazadas por el script "set-users.sh" para tomar las variables de entorno
+Cada aplicacion tiene su respectiva base de datos en el contenedor db. Las credenciales por defecto son reemplazadas por el script "set-users.sh" para tomar las variables de entorno.
+
+**Sobre la funcionalidad del endpoint analyze:** esta se encuentra en analysis-service/analyzers.py. Esta preparada de forma tal que sea facil de extender. Cada tipo de dispostivo (solo se utiliza "switch") tiene un diccionario de puntero a funciones. Cada una de estas funciones realiza pruebas en los archivos de configuracion y retornan como salida "Findings". Cada uno de ellos cuenta con nombre del analyzer que lo encontró, nombre del hallazgo, importancia, numero de linea e información adicional.
 
 ## Mejoras pendientes de implementacion:
 
