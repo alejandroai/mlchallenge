@@ -7,7 +7,8 @@ BASE_URL = "http://localhost:8080"
 # Datos de prueba para el login
 VALID_DEVICE_ID = 1
 INVALID_REPORT_ID = 999
-FORBIDEN_REPORT_ID = 16
+FORBIDEN_REPORT_ID = 1
+VALID_REPORT_ID=2
 INVALID_DEVICE_ID = 999
 
 # Fixture para cargar la contraseña desde un archivo
@@ -43,7 +44,7 @@ def test_login(supply_password):  # Pasar supply_password como argumento
 def test_get_report(supply_password):  # Pasar supply_password como argumento
     access_token = get_access_token(supply_password)  # Pasar supply_password
     headers = {"Authorization": f"Bearer {access_token}"}
-    report_id = 1  # ID de reporte de prueba
+    report_id = VALID_REPORT_ID  # ID de reporte de prueba
     response = requests.get(f"{BASE_URL}/report?report_id={report_id}", headers=headers)
     assert response.status_code == 200
     assert "id" in response.json()
